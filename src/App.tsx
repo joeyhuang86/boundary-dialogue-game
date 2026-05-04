@@ -25,18 +25,20 @@ const bgmSources: Partial<Record<ChapterNumber | "start", string>> = {
 };
 const chapter05RevealBgm = "/boundary-dialogue-game/audio/05_2.mp3";
 const chapter05RevealLine = "我一直在做一个心理学研究。";
-const preloadAssets = [
+const preloadImages = [
   "/boundary-dialogue-game/backgrounds/start-main.jpg",
-  bgmSources.start,
   "/boundary-dialogue-game/backgrounds/01.jpg",
-  bgmSources[1],
   "/boundary-dialogue-game/backgrounds/02.jpg",
-  bgmSources[2],
   "/boundary-dialogue-game/backgrounds/03.jpg",
-  bgmSources[3],
   "/boundary-dialogue-game/backgrounds/04.jpg",
-  bgmSources[4],
   "/boundary-dialogue-game/backgrounds/05.jpg",
+];
+const preloadAudioSources = [
+  bgmSources.start,
+  bgmSources[1],
+  bgmSources[2],
+  bgmSources[3],
+  bgmSources[4],
   bgmSources[5],
   chapter05RevealBgm,
   bgmSources[6],
@@ -367,6 +369,7 @@ function App() {
   const stageRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioBlobUrlsRef = useRef<Record<string, string>>({});
   const isTransitioningRef = useRef(false);
   const [chapterNumber, setChapterNumber] = useState<ChapterNumber>(1);
   const [nodeId, setNodeId] = useState("start");
@@ -392,6 +395,7 @@ function App() {
   const [showChapters, setShowChapters] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(true);
   const [audioMuted, setAudioMuted] = useState(false);
+  const [mediaCacheVersion, setMediaCacheVersion] = useState(0);
 
   const chapter = chapters[chapterNumber];
   const node = useMemo(() => findNode(chapterNumber, nodeId), [chapterNumber, nodeId]);
@@ -399,6 +403,7 @@ function App() {
   const progress = Math.round(((chapter.nodes.findIndex((item) => item.id === node.id) + 1) / chapter.nodes.length) * 100);
   const isChapter05RevealBgm = chapterNumber === 5 && transcript.some((line) => line.text === chapter05RevealLine);
   const bgmSource = screen === "start" ? bgmSources.start : isChapter05RevealBgm ? chapter05RevealBgm : bgmSources[chapterNumber];
+  const playableBgmSource = bgmSource ? audioBlobUrlsRef.current[bgmSource] ?? bgmSource : undefined;
 
   useEffect(() => {
     if (!node.ending || !canChoose) {
@@ -412,33 +417,57 @@ function App() {
   }, [canChoose, chapterNumber, node.ending, stats]);
 
   useEffect(() => {
-    const links: HTMLLinkElement[] = [];
-    const timers: number[] = [];
+    let cancelled = false;
+    const controller = new AbortController();
 
-    preloadAssets.forEach((source, index) => {
-      const timer = window.setTimeout(() => {
-        const link = document.createElement("link");
-        link.rel = "preload";
-        link.href = source;
-        link.as = source.endsWith(".mp3") ? "audio" : "image";
-        if (link.as === "audio") {
-          link.crossOrigin = "anonymous";
-        }
-        document.head.appendChild(link);
-        links.push(link);
-      }, index * 420);
-      timers.push(timer);
+    preloadImages.forEach((source) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = source;
     });
 
+    async function preloadAudioQueue() {
+      for (const source of preloadAudioSources) {
+        if (cancelled || audioBlobUrlsRef.current[source]) {
+          continue;
+        }
+
+        try {
+          const response = await fetch(source, {
+            cache: "force-cache",
+            signal: controller.signal,
+          });
+          if (!response.ok) {
+            continue;
+          }
+          const blob = await response.blob();
+          if (cancelled) {
+            break;
+          }
+          audioBlobUrlsRef.current[source] = URL.createObjectURL(blob);
+          setMediaCacheVersion((version) => version + 1);
+          await new Promise((resolve) => window.setTimeout(resolve, 220));
+        } catch {
+          if (!cancelled) {
+            await new Promise((resolve) => window.setTimeout(resolve, 600));
+          }
+        }
+      }
+    }
+
+    void preloadAudioQueue();
+
     return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-      links.forEach((link) => link.remove());
+      cancelled = true;
+      controller.abort();
+      Object.values(audioBlobUrlsRef.current).forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
+      audioBlobUrlsRef.current = {};
     };
   }, []);
 
   useEffect(() => {
     playCurrentAudio();
-  }, [audioMuted, audioUnlocked, bgmSource]);
+  }, [audioMuted, audioUnlocked, playableBgmSource, mediaCacheVersion]);
 
   function playCurrentAudio() {
     const audio = audioRef.current;
@@ -449,7 +478,7 @@ function App() {
     audio.volume = 0.34;
     audio.muted = audioMuted;
 
-    if (!bgmSource || audioMuted) {
+    if (!playableBgmSource || audioMuted) {
       audio.pause();
       return;
     }
@@ -773,7 +802,7 @@ function App() {
         aria-label="亲密陷阱试玩"
         onPointerDown={unlockAudio}
       >
-        <audio ref={audioRef} src={bgmSource} loop preload="auto" autoPlay aria-hidden="true" />
+        <audio ref={audioRef} src={playableBgmSource} loop preload="auto" autoPlay aria-hidden="true" />
         <button
           className="icon-button sound-toggle"
           type="button"
