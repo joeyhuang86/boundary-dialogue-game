@@ -111,7 +111,7 @@ export const chapter02: StoryNode[] = [
       { speaker: "贺骁", mood: "sharp", text: "这种事你不骂她，还憋着替她找补，你说你是不是活该难受？" },
     ],
     choices: [
-      { id: "breath", text: "深呼吸", next: "bbq_2", hint: "消耗 1 次，识别贺骁的记账式保护。", effects: {}, skill: "deepBreath", insight: "贺骁把陈婷的每一次不满都整理成“罪证”。“被女朋友锁在门外”太具体，也太私密。他说这是程墨喝多时讲的，但更像是在用一个顺手的理由压掉疑点。" },
+      { id: "breath", text: "深呼吸", next: "bbq_2", hint: "消耗 1 次，识别贺骁的记账式保护。", effects: {}, skill: "deepBreath", insight: "贺骁把陈婷的每一次不满都整理成“罪证”。“被陈婷锁在门外”太具体，也太私密。他说这是程墨喝多时讲的，但更像是在用一个顺手的理由压掉疑点。" },
       { id: "a", text: "你记得这些，是不是也只记了她不好的一面？", next: "call", hint: "识别选择性叙事。", effects: { clarity: 6, boundary: 3, heControl: -2 }, condition: { stat: "clarity", min: 50 } },
       { id: "b", text: "我现在想起来都觉得憋屈。", next: "call", hint: "进入受害叙事，怨气被贺骁接住。", effects: { pressure: 2, chenTrust: -6, heControl: 7 } },
       { id: "c", text: "我知道你为我出气，但别替我下结论。", next: "call", hint: "守住判断权。", effects: { clarity: 5, boundary: 5, heControl: -1 } },

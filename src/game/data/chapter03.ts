@@ -167,7 +167,7 @@ export const chapter03: StoryNode[] = [
   {
     id: "touch",
     title: "袖口",
-    scene: "01:24 / 酒吧卡座",
+    scene: "01:30 / 酒吧卡座",
     lines: [
       { speaker: "旁白", mood: "inner", text: "程墨抬手拿杯子，才发现自己的袖口沾了点酒。林叙抽了张纸，伸手过来。" },
       { speaker: "程墨", mood: "tired", text: "我自己来。" },

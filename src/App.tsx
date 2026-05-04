@@ -1,4 +1,4 @@
-import { Heart, List, RotateCcw, X } from "lucide-react";
+import { Heart, Home, List, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { chapter01, initialStats, statLabels } from "./game/data/chapter01";
 import { chapter02 } from "./game/data/chapter02";
@@ -14,6 +14,17 @@ const breakdownPressure = 100;
 const awakePressureCap = 88;
 const awakeClarity = 96;
 const awakeBoundary = 94;
+const bgmSources: Partial<Record<ChapterNumber | "start", string>> = {
+  start: "/boundary-dialogue-game/audio/start.mp3",
+  1: "/boundary-dialogue-game/audio/01.mp3",
+  2: "/boundary-dialogue-game/audio/02.mp3",
+  3: "/boundary-dialogue-game/audio/03.mp3",
+  4: "/boundary-dialogue-game/audio/04.mp3",
+  5: "/boundary-dialogue-game/audio/05_1.mp3",
+  6: "/boundary-dialogue-game/audio/06.mp3",
+};
+const chapter05RevealBgm = "/boundary-dialogue-game/audio/05_2.mp3";
+const chapter05RevealLine = "我一直在做一个心理学研究。";
 const chapter01Cast = [
   {
     name: "程墨",
@@ -339,6 +350,7 @@ function StatBar({ label, value, hidden }: { label: string; value: number; hidde
 function App() {
   const stageRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const isTransitioningRef = useRef(false);
   const [chapterNumber, setChapterNumber] = useState<ChapterNumber>(1);
   const [nodeId, setNodeId] = useState("start");
@@ -362,11 +374,15 @@ function App() {
   const [history, setHistory] = useState<string[]>([]);
   const [latestChapter, setLatestChapter] = useState<ChapterNumber>(() => readLatestChapter());
   const [showChapters, setShowChapters] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(true);
+  const [audioMuted, setAudioMuted] = useState(false);
 
   const chapter = chapters[chapterNumber];
   const node = useMemo(() => findNode(chapterNumber, nodeId), [chapterNumber, nodeId]);
   const canChoose = lineIndex >= node.lines.length - 1;
   const progress = Math.round(((chapter.nodes.findIndex((item) => item.id === node.id) + 1) / chapter.nodes.length) * 100);
+  const isChapter05RevealBgm = chapterNumber === 5 && transcript.some((line) => line.text === chapter05RevealLine);
+  const bgmSource = screen === "start" ? bgmSources.start : isChapter05RevealBgm ? chapter05RevealBgm : bgmSources[chapterNumber];
 
   useEffect(() => {
     if (!node.ending || !canChoose) {
@@ -378,6 +394,49 @@ function App() {
       return next;
     });
   }, [canChoose, chapterNumber, node.ending, stats]);
+
+  useEffect(() => {
+    playCurrentAudio();
+  }, [audioMuted, audioUnlocked, bgmSource]);
+
+  function playCurrentAudio() {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    audio.volume = 0.34;
+    audio.muted = audioMuted;
+
+    if (!bgmSource || audioMuted) {
+      audio.pause();
+      return;
+    }
+
+    void audio.play().then(() => {
+      setAudioUnlocked(true);
+    }).catch(() => {
+      setAudioUnlocked(false);
+    });
+  }
+
+  function unlockAudio() {
+    if (audioMuted) {
+      return;
+    }
+    playCurrentAudio();
+    setAudioUnlocked(true);
+  }
+
+  function toggleAudio() {
+    setAudioMuted((muted) => {
+      const nextMuted = !muted;
+      if (!nextMuted) {
+        setAudioUnlocked(true);
+      }
+      return nextMuted;
+    });
+  }
 
   function resetChapterState(targetChapter: ChapterNumber = chapterNumber, statsSnapshot?: Stats, startNodeId = "start") {
     setNodeId(startNodeId);
@@ -409,6 +468,7 @@ function App() {
   }
 
   function startGame() {
+    unlockAudio();
     setLatestChapter(1);
     saveLatestChapter(1);
     setChapterEndStats({});
@@ -420,6 +480,7 @@ function App() {
   }
 
   function continueGame() {
+    unlockAudio();
     const entryStats = getChapterEntryStats(latestChapter);
     setChapterNumber(latestChapter);
     setChapterEntryStats(entryStats);
@@ -666,7 +727,25 @@ function App() {
         </div>
       </section>
 
-      <section className={`phone-frame screen-${screen} chapter-bg-${chapterNumber}`} aria-label="亲密陷阱试玩">
+      <section
+        className={`phone-frame screen-${screen} chapter-bg-${chapterNumber}`}
+        aria-label="亲密陷阱试玩"
+        onPointerDown={unlockAudio}
+      >
+        <audio ref={audioRef} src={bgmSource} loop preload="auto" autoPlay aria-hidden="true" />
+        <button
+          className="icon-button sound-toggle"
+          type="button"
+          onClick={toggleAudio}
+          aria-label={audioMuted ? "开启声音" : "静音"}
+        >
+          {audioMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </button>
+        {screen !== "start" ? (
+          <button className="icon-button home-toggle" type="button" onClick={restart} aria-label="回到首页">
+            <Home size={18} />
+          </button>
+        ) : null}
         {screen === "start" ? (
           <section className="start-screen">
             <div className="start-backdrop" />
@@ -700,11 +779,9 @@ function App() {
         {screen === "intro" ? (
           <section className="chapter-intro">
             <header className="intro-head">
-              <button className="icon-button" type="button" onClick={restart} aria-label="返回开始界面">
-                <RotateCcw size={18} />
-              </button>
+              <span aria-hidden="true" />
               <div />
-              <span />
+              <span aria-hidden="true" />
             </header>
 
             <div className="intro-content">
@@ -751,9 +828,11 @@ function App() {
             <p>{node.scene}</p>
             <h1>{chapter.title}</h1>
           </div>
-          <button className="icon-button" type="button" onClick={() => setShowStats(true)} aria-label="查看状态">
-            <Heart size={21} />
-          </button>
+          <div className="topbar-actions">
+            <button className="icon-button" type="button" onClick={() => setShowStats(true)} aria-label="查看状态">
+              <Heart size={21} />
+            </button>
+          </div>
         </header>
 
         <div className="progress">
