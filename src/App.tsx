@@ -348,6 +348,7 @@ function App() {
   const [showStats, setShowStats] = useState(false);
   const [choiceEcho, setChoiceEcho] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [choicesArmed, setChoicesArmed] = useState(false);
   const [choiceToast, setChoiceToast] = useState("");
   const [deepBreathLeft, setDeepBreathLeft] = useState(2);
   const [deepBreathUsedNodes, setDeepBreathUsedNodes] = useState<string[]>([]);
@@ -390,6 +391,7 @@ function App() {
     setShowStats(false);
     setShowChapters(false);
     setChoiceEcho(null);
+    setChoicesArmed(false);
     setChoiceToast("");
     setDeepBreathLeft(2);
     setDeepBreathUsedNodes([]);
@@ -508,9 +510,15 @@ function App() {
       return;
     }
 
+    if (hasMeaningfulChoices && !choicesArmed) {
+      setChoicesArmed(true);
+      return;
+    }
+
     if (lineIndex < node.lines.length - 1) {
       const nextIndex = lineIndex + 1;
       setLineIndex(nextIndex);
+      setChoicesArmed(false);
       setTranscript((lines) => appendLine(lines, node.lines[nextIndex]));
     }
   }
@@ -562,6 +570,7 @@ function App() {
       setLineIndex(firstLineIndex);
       setTranscript((lines) => appendLine(lines, firstLine));
       setChoiceEcho(null);
+      setChoicesArmed(false);
       isTransitioningRef.current = false;
       setIsTransitioning(false);
     }, choice.id === "continue" ? 120 : 260);
@@ -632,6 +641,7 @@ function App() {
   const hasMeaningfulChoices = Boolean(
     canChoose && node.choices && (node.choices.length > 1 || node.choices[0]?.id !== "continue"),
   );
+  const showChoiceModal = hasMeaningfulChoices && choicesArmed;
 
   useEffect(() => {
     if (!stageRef.current || !bottomRef.current) {
@@ -644,7 +654,7 @@ function App() {
         block: "end",
       });
     });
-  }, [transcript.length, choiceEcho, hasMeaningfulChoices]);
+  }, [transcript.length, choiceEcho, showChoiceModal]);
 
   return (
     <main className="app-shell">
@@ -656,7 +666,7 @@ function App() {
         </div>
       </section>
 
-      <section className="phone-frame" aria-label="亲密陷阱试玩">
+      <section className={`phone-frame screen-${screen} chapter-bg-${chapterNumber}`} aria-label="亲密陷阱试玩">
         {screen === "start" ? (
           <section className="start-screen">
             <div className="start-backdrop" />
@@ -705,20 +715,23 @@ function App() {
               {chapterNumber === 5 ? (
                 <p className="intro-summary">{chapter.summary}</p>
               ) : (
-                <div className="cast-list">
-                  {chapter.cast.map((person) => (
-                    <article className="cast-card" key={person.name}>
-                      <div className="cast-avatar">{person.name.slice(0, 1)}</div>
-                      <div>
-                        <div className="cast-name">
-                          <strong>{person.name}</strong>
-                          <span>{person.role}</span>
+                <section className="cast-section" aria-label="人物介绍">
+                  <div className="cast-heading">人物介绍</div>
+                  <div className="cast-list">
+                    {chapter.cast.map((person) => (
+                      <article className="cast-card" key={person.name}>
+                        <div className="cast-avatar">{person.name.slice(0, 1)}</div>
+                        <div>
+                          <div className="cast-name">
+                            <strong>{person.name}</strong>
+                            <span>{person.role}</span>
+                          </div>
+                          <p>{person.description}</p>
                         </div>
-                        <p>{person.description}</p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
               )}
 
               <button className="start-button intro-button" type="button" onClick={beginChapter}>
@@ -771,7 +784,7 @@ function App() {
         </section>
 
         <footer className="choice-area">
-          {!canChoose || (node.choices && !hasMeaningfulChoices) ? (
+          {!canChoose || (node.choices && !hasMeaningfulChoices) || (hasMeaningfulChoices && !choicesArmed) ? (
             <div className="tap-prompt">点击屏幕继续</div>
           ) : hasMeaningfulChoices ? (
             <div className="choice-prompt">需要你做出回应</div>
@@ -794,7 +807,7 @@ function App() {
           )}
         </footer>
 
-        {hasMeaningfulChoices ? (
+        {showChoiceModal ? (
           <div className="choice-modal" role="dialog" aria-modal="true" aria-label="选择程墨的回应">
             <div className="choice-sheet">
               <div className="choice-sheet-head">

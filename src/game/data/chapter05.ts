@@ -255,7 +255,10 @@ export const chapter05: StoryNode[] = [
     scene: "21:03 / 包间",
     lines: [
       { speaker: "贺骁", mood: "sharp", text: "行，那我自己说。" },
-      { speaker: "贺骁", mood: "sharp", text: "你确实是我的课题。" },
+      { speaker: "贺骁", mood: "sharp", text: "我一直在做一个心理学研究。" },
+      { speaker: "贺骁", mood: "sharp", text: "研究一个人在亲密关系里的所有行为，其实都可以被操控。" },
+      { speaker: "贺骁", mood: "sharp", text: "你的愧疚、信任、依赖，甚至是性取向，都可以被一句话、一个人、一场安排慢慢改变。" },
+      { speaker: "贺骁", mood: "sharp", text: "而你，程墨，就是我的课题。" },
       { speaker: "程墨", mood: "cold", text: "你拿我做实验？" },
       { speaker: "贺骁", mood: "sharp", text: "别说得这么难听。我只是想证明，人所谓的选择，根本没那么牢靠。" },
       { speaker: "程墨", mood: "cold", text: "什么意思？" },
