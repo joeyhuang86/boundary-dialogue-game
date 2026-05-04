@@ -25,6 +25,22 @@ const bgmSources: Partial<Record<ChapterNumber | "start", string>> = {
 };
 const chapter05RevealBgm = "/boundary-dialogue-game/audio/05_2.mp3";
 const chapter05RevealLine = "我一直在做一个心理学研究。";
+const preloadAssets = [
+  "/boundary-dialogue-game/backgrounds/start-main.jpg",
+  bgmSources.start,
+  "/boundary-dialogue-game/backgrounds/01.jpg",
+  bgmSources[1],
+  "/boundary-dialogue-game/backgrounds/02.jpg",
+  bgmSources[2],
+  "/boundary-dialogue-game/backgrounds/03.jpg",
+  bgmSources[3],
+  "/boundary-dialogue-game/backgrounds/04.jpg",
+  bgmSources[4],
+  "/boundary-dialogue-game/backgrounds/05.jpg",
+  bgmSources[5],
+  chapter05RevealBgm,
+  bgmSources[6],
+].filter(Boolean) as string[];
 const chapter01Cast = [
   {
     name: "程墨",
@@ -394,6 +410,31 @@ function App() {
       return next;
     });
   }, [canChoose, chapterNumber, node.ending, stats]);
+
+  useEffect(() => {
+    const links: HTMLLinkElement[] = [];
+    const timers: number[] = [];
+
+    preloadAssets.forEach((source, index) => {
+      const timer = window.setTimeout(() => {
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.href = source;
+        link.as = source.endsWith(".mp3") ? "audio" : "image";
+        if (link.as === "audio") {
+          link.crossOrigin = "anonymous";
+        }
+        document.head.appendChild(link);
+        links.push(link);
+      }, index * 420);
+      timers.push(timer);
+    });
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      links.forEach((link) => link.remove());
+    };
+  }, []);
 
   useEffect(() => {
     playCurrentAudio();
